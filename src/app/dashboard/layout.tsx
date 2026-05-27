@@ -49,12 +49,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   )
 
-  function canAccess(modulo: string | null) {
-    if (!modulo) return true
-    if (profile?.is_gestor) return true
-    if (modulo === 'gestor') return false
-    return profile?.modulos?.includes(modulo)
-  }
+ function canAccess(modulo: string | null) {
+  if (!modulo) return true
+  const isGestor = profile?.is_gestor === true || profile?.is_gestor === 'true' || profile?.is_gestor === 'TRUE'
+  if (isGestor) return true
+  if (modulo === 'gestor') return false
+  return profile?.modulos?.includes(modulo)
+}
 
   const visibleNav = NAV.filter(n => canAccess(n.modulo))
 
