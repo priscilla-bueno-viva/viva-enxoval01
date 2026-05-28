@@ -38,6 +38,43 @@ export default function PontoForm({ table, pontos, date, lavanderia, predio, acc
   const [saving, setSaving] = useState<string | null>(null)
   const [saved, setSaved] = useState<Record<string, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true)
+      setValues(Object.fromEntries(pontos.map(p => [p.id, emptyPecas()])))
+      setTaloes(Object.fromEntries(pontos.filter(p => p.hasTalao).map(p => [p.id, []])))
+      setSaved({})
+
+      for (const ponto of pontos) {
+        if (ponto.readonly) continue
+        let query = supabase.from(table).select('*').eq('data', date).eq('ponto', ponto.id)
+        if (lavanderia) query = query.eq('lavanderia', lavanderia)
+        if (predio) query = query.eq('predio', predio)
+        const { data } = await query
+        if (!data || data.length === 0) continue
+
+        if (ponto.hasTalao) {
+          const loaded = data.map((row, idx) => ({
+            id: row.id ?? idx,
+            numero: row.numero_talao || '',
+            data_cos: row.data_cos || '',
+            predio_origem: row.predio_origem || '',
+            pecas: PECAS.reduce((acc, k) => ({ ...acc, [k]: row[k] != null ? String(row[k]) : '' }), {} as Record<string, string>),
+          }))
+          setTaloes(prev => ({ ...prev, [ponto.id]: loaded }))
+        } else {
+          const row = data[0]
+          const pecas = PECAS.reduce((acc, k) => ({ ...acc, [k]: row[k] != null ? String(row[k]) : '' }), {} as Record<string, string>)
+          setValues(prev => ({ ...prev, [ponto.id]: pecas }))
+        }
+        setSaved(prev => ({ ...prev, [ponto.id]: true }))
+      }
+      setLoading(false)
+    }
+    loadData()
+  }, [date, lavanderia, predio, table])
 
   function setPecaVal(pontoId: string, key: string, val: string) {
     setValues(prev => ({ ...prev, [pontoId]: { ...prev[pontoId], [key]: val } }))
@@ -167,7 +204,7 @@ export default function PontoForm({ table, pontos, date, lavanderia, predio, acc
                 <div className="text-xs text-gray-400">{ponto.descricao}</div>
               </div>
             </div>
-            {saved[ponto.id] && <span className="text-xs text-green-600">✓ Salvo</span>}
+            {loading ? <span className="text-xs text-gray-400">Carregando...</span> : saved[ponto.id] && <span className="text-xs text-green-600">✓ Salvo</span>}
           </div>
 
           <div className="px-5 py-4">
