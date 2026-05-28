@@ -6,10 +6,7 @@ import { createClient } from '@/lib/supabase'
 const NAV = [
   { href: '/dashboard', label: 'Início', icon: '🏠', modulo: null },
   { href: '/dashboard/limpezas', label: 'Limpezas do Dia', icon: '🧹', modulo: null },
-  { href: '/dashboard/deposito-limpo', label: 'Depósito Limpo', icon: '🏭', modulo: 'deposito_limpo', sub: 'A · B · C · D' },
-  { href: '/dashboard/predio-limpo', label: 'Prédio Limpo', icon: '🏢', modulo: 'predio_limpo', sub: 'E · F · G' },
-  { href: '/dashboard/predio-sujo', label: 'Prédio Sujo', icon: '🏢', modulo: 'predio_sujo', sub: 'H · I · J' },
-  { href: '/dashboard/deposito-sujo', label: 'Depósito Sujo', icon: '🏭', modulo: 'deposito_sujo', sub: 'L · M · N' },
+  { href: '/dashboard/controle', label: 'Pontos de Controle', icon: '📋', modulo: null, sub: 'A·B·C·D · E·F·G · H·I·J · L·M·N' },
   { href: '/dashboard/cruzamentos', label: 'Cruzamentos', icon: '⚖️', modulo: null },
   { href: '/dashboard/admin', label: 'Gestão de Usuários', icon: '👥', modulo: 'gestor' },
 ]
