@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 const NAV = [
   { href: '/dashboard', label: 'Início', icon: '🏠', modulo: null },
   { href: '/dashboard/limpezas', label: 'Limpezas do Dia', icon: '🧹', modulo: null },
+  { href: '/dashboard/previsao', label: 'Previsão de Envio', icon: '📦', modulo: null, sub: 'Calcule o que enviar amanhã' },
   { href: '/dashboard/controle', label: 'Pontos de Controle', icon: '📋', modulo: null, sub: 'A·B·C·D · E·F·G · H·I·J · L·M·N' },
   { href: '/dashboard/cruzamentos', label: 'Cruzamentos', icon: '⚖️', modulo: null },
   { href: '/dashboard/admin', label: 'Gestão de Usuários', icon: '👥', modulo: 'gestor' },

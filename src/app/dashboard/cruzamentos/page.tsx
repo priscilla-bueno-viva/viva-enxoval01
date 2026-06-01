@@ -1,14 +1,12 @@
 'use client'
 import { useState } from 'react'
-import { createClient, PECAS, PECAS_SHORT, PECAS_LABEL } from '@/lib/supabase'
+import { createClient, PECAS, PECAS_SHORT } from '@/lib/supabase'
+import * as XLSX from 'xlsx'
 
 function diff(a: Record<string, number>, b: Record<string, number>) {
   return PECAS.map(k => (a[k] || 0) - (b[k] || 0))
 }
 function isZero(arr: number[]) { return arr.every(v => v === 0) }
-function sumArr(rows: any[], campos: string[]) {
-  return PECAS.reduce((acc, k, i) => ({ ...acc, [k]: rows.reduce((s, r) => s + (r[campos[i]] || r[k] || 0), 0) }), {} as Record<string, number>)
-}
 
 export default function CruzamentosPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
@@ -24,13 +22,7 @@ export default function CruzamentosPage() {
     const matchLav = (q: any) => lavanderia ? q.eq('lavanderia', lavanderia) : q
     const matchPred = (q: any) => predio ? q.eq('predio', predio) : q
 
-    const [
-      { data: dlData },
-      { data: plData },
-      { data: psData },
-      { data: dsData },
-      { data: limpData },
-    ] = await Promise.all([
+    const [{ data: dlData },{ data: plData },{ data: psData },{ data: dsData },{ data: limpData }] = await Promise.all([
       matchLav(matchDate(supabase.from('deposito_limpo').select('*'))),
       matchLav(matchPred(matchDate(supabase.from('predio_limpo').select('*')))),
       matchLav(matchPred(matchDate(supabase.from('predio_sujo').select('*')))),
@@ -43,33 +35,35 @@ export default function CruzamentosPage() {
       return PECAS.reduce((acc, k) => ({ ...acc, [k]: r.reduce((s: number, x: any) => s + (x[k] || 0), 0) }), {} as Record<string, number>)
     }
 
-    const E = get(plData || [], 'E')
-    const F = get(plData || [], 'F')
+    const E = get(plData || [], 'E'), F = get(plData || [], 'F')
     const I = get(psData || [], 'I')
-    const L_taloes = get(dsData || [], 'L')
-    const M = get(dsData || [], 'M')
-    const N = get(dsData || [], 'N')
-
-    // J from limpezas
-    const J = PECAS.reduce((acc, k, i) => {
-      const campos = ['lenco_casal_esperado','lenco_solteiro_esperado','fronha_esperada','toalha_banho_esperada','toalha_rosto_esperada','toalha_piso_esperada']
-      return { ...acc, [k]: (limpData || []).reduce((s: number, r: any) => s + (r[campos[i]] || 0), 0) }
-    }, {} as Record<string, number>)
+    const L = get(dsData || [], 'L'), M = get(dsData || [], 'M'), N = get(dsData || [], 'N')
+    const camposJ = ['lenco_casal_esperado','lenco_solteiro_esperado','fronha_esperada','toalha_banho_esperada','toalha_rosto_esperada','toalha_piso_esperada']
+    const J = PECAS.reduce((acc, k, i) => ({ ...acc, [k]: (limpData || []).reduce((s: number, r: any) => s + (r[camposJ[i]] || 0), 0) }), {} as Record<string, number>)
 
     const cruzamentos = [
       { id: 'E × F', desc: 'Estoque limpo pré-op vs limpos entregues logística', a: E, b: F, aLabel: 'E', bLabel: 'F' },
       { id: 'I × J', desc: 'Sujo retirado (talões) vs sujo esperado calculado', a: I, b: J, aLabel: 'I', bLabel: 'J' },
-      { id: 'L × I', desc: 'Talões recebidos no depósito vs retirados nos prédios', a: L_taloes, b: I, aLabel: 'L', bLabel: 'I' },
-      { id: 'M × L', desc: 'Total bipado depósito vs soma talões recebidos', a: M, b: L_taloes, aLabel: 'M', bLabel: 'L' },
+      { id: 'L × I', desc: 'Talões recebidos no depósito vs retirados nos prédios', a: L, b: I, aLabel: 'L', bLabel: 'I' },
+      { id: 'M × L', desc: 'Total bipado depósito vs soma talões recebidos', a: M, b: L, aLabel: 'M', bLabel: 'L' },
       { id: 'N × M', desc: 'Confirmado pela lavanderia vs total bipado SKURBAN', a: N, b: M, aLabel: 'N', bLabel: 'M' },
     ]
-
-    setResults(cruzamentos.map(c => ({
-      ...c,
-      diff: diff(c.a, c.b),
-      hasData: PECAS.some(k => (c.a[k] || 0) > 0 || (c.b[k] || 0) > 0),
-    })))
+    setResults(cruzamentos.map(c => ({ ...c, diff: diff(c.a, c.b), hasData: PECAS.some(k => (c.a[k] || 0) > 0 || (c.b[k] || 0) > 0) })))
     setLoading(false)
+  }
+
+  function handleExport() {
+    if (!results.length) return
+    const header = ['Cruzamento', 'Descrição', 'Status', ...PECAS_SHORT.map(p => `${p} (A)`), ...PECAS_SHORT.map(p => `${p} (B)`), ...PECAS_SHORT.map(p => `Δ ${p}`)]
+    const dataRows = results.map(c => {
+      const ok = isZero(c.diff)
+      const status = !c.hasData ? 'Sem dados' : ok ? 'OK' : 'Divergência'
+      return [c.id, c.desc, status, ...PECAS.map(k => c.a[k] || 0), ...PECAS.map(k => c.b[k] || 0), ...c.diff]
+    })
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows])
+    XLSX.utils.book_append_sheet(wb, ws, 'Cruzamentos')
+    XLSX.writeFile(wb, `cruzamentos_${date}.xlsx`)
   }
 
   return (
@@ -79,6 +73,12 @@ export default function CruzamentosPage() {
           <h1 className="text-xl font-semibold text-gray-900">Cruzamentos</h1>
           <p className="text-sm text-gray-400 mt-0.5">Verificação automática dos pontos de controle</p>
         </div>
+        {results.length > 0 && (
+          <button onClick={handleExport}
+            className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+            ⬇ Exportar Excel
+          </button>
+        )}
       </div>
 
       <div className="flex gap-3 mb-6 flex-wrap">
@@ -112,9 +112,7 @@ export default function CruzamentosPage() {
                     <span className="font-mono text-sm font-semibold text-gray-900">{c.id}</span>
                     <span className="text-sm text-gray-500">{c.desc}</span>
                   </div>
-                  <span className={`text-xs px-3 py-1 rounded-full font-medium
-                    ${noData ? 'bg-gray-100 text-gray-400' :
-                      ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${noData ? 'bg-gray-100 text-gray-400' : ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                     {noData ? 'Sem dados' : ok ? '✓ OK' : '⚠ Divergência'}
                   </span>
                 </div>
@@ -125,12 +123,8 @@ export default function CruzamentosPage() {
                   </div>
                   {[{label: c.aLabel, vals: c.a}, {label: c.bLabel, vals: c.b}].map(row => (
                     <div key={row.label} className="grid grid-cols-7 gap-2 mb-1">
-                      {PECAS.map((k) => (
-                        <div key={k} className="text-center text-sm font-medium text-gray-700">{row.vals[k] ?? 0}</div>
-                      ))}
-                      <div className="text-center text-sm font-semibold text-gray-500">
-                        {PECAS.reduce((s, k) => s + (row.vals[k] || 0), 0)}
-                      </div>
+                      {PECAS.map(k => <div key={k} className="text-center text-sm font-medium text-gray-700">{row.vals[k] ?? 0}</div>)}
+                      <div className="text-center text-sm font-semibold text-gray-500">{PECAS.reduce((s, k) => s + (row.vals[k] || 0), 0)}</div>
                     </div>
                   ))}
                   {!ok && !noData && (
@@ -143,7 +137,7 @@ export default function CruzamentosPage() {
                           </div>
                         ))}
                         <div className={`text-center text-sm font-semibold ${c.diff.reduce((s: number, v: number) => s + v, 0) !== 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                          {c.diff.reduce((s: number, v: number) => s + v, 0) > 0 ? '+' : ''}{c.diff.reduce((s: number, v: number) => s + v, 0)}
+                          {(() => { const t = c.diff.reduce((s: number, v: number) => s + v, 0); return t > 0 ? `+${t}` : t })()}
                         </div>
                       </div>
                     </div>
