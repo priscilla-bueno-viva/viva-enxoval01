@@ -35,6 +35,7 @@ export default function PrevisaoPage() {
   const [loading, setLoading] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
+  const [debugUnits, setDebugUnits] = useState<string[]>([])
   const supabase = createClient()
 
   // Processa arquivo de previsão de limpezas
@@ -47,6 +48,7 @@ export default function PrevisaoPage() {
 
       // Agrupa por prédio e soma peças necessárias
       const byPredio: Record<string, { lav: string; limpezas: number; necessario: number[] }> = {}
+      const unmapped: string[] = []
 
       for (const r of data) {
         const unidade = (r['Unidade'] || r['unidade'] || '').trim()
@@ -58,6 +60,7 @@ export default function PrevisaoPage() {
 
         const combos = PADRAO[predio] || {}
         const comboKey = UNIT_COMBO[unidade] || Object.keys(combos)[0] || ''
+        if (!UNIT_COMBO[unidade] && unmapped.length < 3) unmapped.push(unidade)
         const pad = (comboKey && combos[comboKey]) ? combos[comboKey] : [0,0,0,0,0,0]
         const lav = getLavanderia(predio)
 
@@ -66,6 +69,7 @@ export default function PrevisaoPage() {
         pad.forEach((v, i) => byPredio[predio].necessario[i] += v)
       }
 
+      setDebugUnits(unmapped)
       // Carrega ponto G do banco para cada prédio
       await carregarG(byPredio)
     }
@@ -239,6 +243,13 @@ export default function PrevisaoPage() {
         <input type="file" accept=".xlsx,.xls" className="hidden"
           onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} />
       </label>
+
+      {debugUnits.length > 0 && (
+        <div className="mb-4 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">
+          ⚠ Unidades sem tipologia mapeada (usando padrão do prédio): <strong>{debugUnits.join(' | ')}</strong>
+          <br/>Compartilhe esses nomes para corrigir o mapeamento.
+        </div>
+      )}
 
       {loading && (
         <div className="text-center py-8 text-gray-400 text-sm">Carregando dados...</div>
