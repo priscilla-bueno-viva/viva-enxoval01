@@ -100,7 +100,7 @@ export default function PrevisaoPage() {
       const gRow = gData?.find((r: any) => r.predio === predio)
       const estoqueG = PECAS.map(k => gRow?.[k] || 0)
       const necessario = info.necessario
-      const aEnviar = necessario.map((n, i) => Math.max(0, n - estoqueG[i]))
+      const aEnviar = necessario.map((n: number, i: number) => Math.max(0, n - estoqueG[i]))
 
       const saved = confirmData?.find((r: any) => r.predio === predio)
       return {
