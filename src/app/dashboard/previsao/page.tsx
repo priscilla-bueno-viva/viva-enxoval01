@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient, PADRAO, getLavanderia, PECAS } from '@/lib/supabase'
+import { UNIT_COMBO } from '@/lib/unitMap'
 import * as XLSX from 'xlsx'
 
 const PECAS_SHORT = ['LC', 'LS', 'Fr', 'TB', 'TR', 'TP']
@@ -56,8 +57,8 @@ export default function PrevisaoPage() {
         if (!predio || !PADRAO[predio]) continue
 
         const combos = PADRAO[predio] || {}
-        const firstCombo = Object.keys(combos)[0] || ''
-        const pad = (firstCombo && combos[firstCombo]) ? combos[firstCombo] : [0,0,0,0,0,0]
+        const comboKey = UNIT_COMBO[unidade] || Object.keys(combos)[0] || ''
+        const pad = (comboKey && combos[comboKey]) ? combos[comboKey] : [0,0,0,0,0,0]
         const lav = getLavanderia(predio)
 
         if (!byPredio[predio]) byPredio[predio] = { lav, limpezas: 0, necessario: [0,0,0,0,0,0] }

@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient, PADRAO, getLavanderia } from '@/lib/supabase'
+import { UNIT_COMBO } from '@/lib/unitMap'
 import * as XLSX from 'xlsx'
 
 const PECAS_SHORT = ['LC', 'LS', 'Fr', 'TB', 'TR', 'TP']
@@ -26,10 +27,10 @@ export default function LimpezasPage() {
         const predio = unidade.split(' ')[0]
         const lav = getLavanderia(predio)
         const combos = PADRAO[predio] || {}
-        const firstCombo = Object.keys(combos)[0] || ''
-        const pad = (firstCombo && combos[firstCombo]) ? combos[firstCombo] : [0,0,0,0,0,0]
+        const comboKey = UNIT_COMBO[unidade] || Object.keys(combos)[0] || ''
+        const pad = (comboKey && combos[comboKey]) ? combos[comboKey] : [0,0,0,0,0,0]
         return {
-          unidade, predio, lavanderia: lav, combinacao: firstCombo,
+          unidade, predio, lavanderia: lav, combinacao: comboKey,
           lenco_casal_esperado: pad[0], lenco_solteiro_esperado: pad[1],
           fronha_esperada: pad[2], toalha_banho_esperada: pad[3],
           toalha_rosto_esperada: pad[4], toalha_piso_esperada: pad[5],
