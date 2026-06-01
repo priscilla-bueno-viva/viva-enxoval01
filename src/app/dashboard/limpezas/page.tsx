@@ -27,7 +27,8 @@ export default function LimpezasPage() {
         const predio = unidade.split(' ')[0]
         const lav = getLavanderia(predio)
         const combos = PADRAO[predio] || {}
-        const comboKey = UNIT_COMBO[unidade] || Object.keys(combos)[0] || ''
+        const unidadeNorm = unidade.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\|.*$/, '').trim()
+        const comboKey = UNIT_COMBO[unidade] || UNIT_COMBO[unidadeNorm] || Object.keys(combos)[0] || ''
         const pad = (comboKey && combos[comboKey]) ? combos[comboKey] : [0,0,0,0,0,0]
         return {
           unidade, predio, lavanderia: lav, combinacao: comboKey,

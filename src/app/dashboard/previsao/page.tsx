@@ -36,6 +36,7 @@ export default function PrevisaoPage() {
   const [salvando, setSalvando] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [debugUnits, setDebugUnits] = useState<string[]>([])
+  const [arquivoCarregado, setArquivoCarregado] = useState('')
   const supabase = createClient()
 
   // Processa arquivo de previsão de limpezas
@@ -59,8 +60,10 @@ export default function PrevisaoPage() {
         if (!predio || !PADRAO[predio]) continue
 
         const combos = PADRAO[predio] || {}
-        const comboKey = UNIT_COMBO[unidade] || Object.keys(combos)[0] || ''
-        if (!UNIT_COMBO[unidade] && unmapped.length < 3) unmapped.push(unidade)
+        // Normaliza sufixos como "(MU)", "| R" que o arquivo pode trazer
+        const unidadeNorm = unidade.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s*\|.*$/, '').trim()
+        const comboKey = UNIT_COMBO[unidade] || UNIT_COMBO[unidadeNorm] || Object.keys(combos)[0] || ''
+        if (!UNIT_COMBO[unidade] && !UNIT_COMBO[unidadeNorm] && unmapped.length < 3) unmapped.push(unidade)
         const pad = (comboKey && combos[comboKey]) ? combos[comboKey] : [0,0,0,0,0,0]
         const lav = getLavanderia(predio)
 
@@ -123,6 +126,62 @@ export default function PrevisaoPage() {
 
     setPredios(resultado)
     setLoading(false)
+
+    // Auto-salva no BD quando vem de upload de arquivo (byPredio passado como argumento)
+    if (byPredio) {
+      const { data: { session } } = await supabase.auth.getSession()
+      for (const p of resultado) {
+        await supabase.from('previsao_logistica').upsert({
+          data_previsao: dataPrev,
+          data_g: dataG,
+          predio: p.predio,
+          lavanderia: p.lavanderia,
+          limpezas_previstas: p.limpezas,
+          necessario: JSON.stringify(p.necessario),
+          estoque_g: JSON.stringify(p.estoqueG),
+          a_enviar: JSON.stringify(p.aEnviar),
+          enviado_real: JSON.stringify(p.enviadoReal),
+          observacao: p.observacao,
+          confirmado: p.confirmado,
+          atualizado_por: session?.user.id,
+        }, { onConflict: 'data_previsao,predio' })
+      }
+      const now = new Date()
+      setArquivoCarregado(`Carregado hoje às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`)
+    }
+  }
+
+  // Carrega dados salvos do BD quando dataPrev muda
+  useEffect(() => {
+    loadFromDB()
+  }, [dataPrev])
+
+  async function loadFromDB() {
+    setLoading(true)
+    const { data } = await supabase.from('previsao_logistica').select('*').eq('data_previsao', dataPrev)
+    setLoading(false)
+    if (!data || !data.length) { setPredios([]); return }
+    const result: PredioDados[] = data.map((r: any) => ({
+      predio: r.predio,
+      lavanderia: r.lavanderia,
+      limpezas: r.limpezas_previstas || 0,
+      necessario: tryParse(r.necessario, [0,0,0,0,0,0]),
+      estoqueG: tryParse(r.estoque_g, [0,0,0,0,0,0]),
+      aEnviar: tryParse(r.a_enviar, [0,0,0,0,0,0]),
+      confirmado: r.confirmado || false,
+      observacao: r.observacao || '',
+      enviadoReal: tryParse(r.enviado_real, [0,0,0,0,0,0].map(String)),
+    }))
+    setPredios(result.sort((a, b) => a.predio.localeCompare(b.predio)))
+    if (data[0]?.updated_at) {
+      const d = new Date(data[0].updated_at)
+      setArquivoCarregado(`Dados de ${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`)
+    }
+  }
+
+  function tryParse(val: any, fallback: any) {
+    if (!val) return fallback
+    try { return typeof val === 'string' ? JSON.parse(val) : val } catch { return fallback }
   }
 
   // Recarrega G quando dataG muda e já há dados
@@ -238,7 +297,9 @@ export default function PrevisaoPage() {
       {/* Upload */}
       <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-6 cursor-pointer hover:bg-gray-50 transition mb-5">
         <span className="text-2xl mb-2">📂</span>
-        <span className="text-sm font-medium text-gray-700">Carregar arquivo de previsão de limpezas</span>
+        <span className="text-sm font-medium text-gray-700">
+          {arquivoCarregado ? `🔄 Atualizar arquivo · ${arquivoCarregado}` : 'Carregar arquivo de previsão de limpezas'}
+        </span>
         <span className="text-xs text-gray-400 mt-1">.xlsx ou .xls — limpezas agendadas para {dataPrev}</span>
         <input type="file" accept=".xlsx,.xls" className="hidden"
           onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} />
