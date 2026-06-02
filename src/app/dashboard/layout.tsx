@@ -9,6 +9,7 @@ const NAV = [
   { href: '/dashboard/previsao', label: 'Previsão de Envio', icon: '📦', modulo: null, sub: 'Calcule o que enviar amanhã' },
   { href: '/dashboard/controle', label: 'Pontos de Controle', icon: '📋', modulo: null, sub: 'A·B·C·D · E·F·G · H·I·J · L·M·N' },
   { href: '/dashboard/cruzamentos', label: 'Cruzamentos', icon: '⚖️', modulo: null },
+  { href: '/dashboard/unidades', label: 'Cadastro de Unidades', icon: '🏠', modulo: 'gestor' },
   { href: '/dashboard/admin', label: 'Gestão de Usuários', icon: '👥', modulo: 'gestor' },
 ]
 
