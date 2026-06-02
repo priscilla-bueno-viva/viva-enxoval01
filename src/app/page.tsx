@@ -2,15 +2,13 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 
-type Mode = 'password' | 'magic' | 'reset'
-
 export default function LoginPage() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<Mode>('password')
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [password, setPassword] = useState('')
   const supabase = createClient()
 
   function validateEmail(e: string) {
@@ -19,16 +17,6 @@ export default function LoginPage() {
       return false
     }
     return true
-  }
-
-  async function handlePassword(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    if (!validateEmail(email)) return
-    setLoading(true)
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    if (err) setError('E-mail ou senha incorretos.')
   }
 
   async function handleMagic(e: React.FormEvent) {
@@ -45,18 +33,32 @@ export default function LoginPage() {
     else setDone(true)
   }
 
-  async function handleReset(e: React.FormEvent) {
+  async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (!validateEmail(email)) return
     setLoading(true)
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    })
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
-    if (err) setError('Erro ao enviar e-mail. Tente novamente.')
-    else setDone(true)
+    if (err) setError('E-mail ou senha incorretos.')
   }
+
+  if (done) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 w-full max-w-sm text-center">
+        <div className="text-4xl mb-4">📬</div>
+        <h2 className="font-semibold text-gray-900 mb-2">Link enviado!</h2>
+        <p className="text-sm text-gray-500">
+          Verifique sua caixa de entrada em <strong>{email}</strong> e clique no link para acessar.
+        </p>
+        <p className="text-xs text-gray-400 mt-3">Pode fechar esta aba e abrir o link direto do e-mail.</p>
+        <button onClick={() => { setDone(false); setError('') }}
+          className="mt-5 text-xs text-blue-600 hover:underline">
+          ← Voltar
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -71,27 +73,33 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {done ? (
-          <div className="text-center">
-            <div className="text-4xl mb-4">{mode === 'reset' ? '🔑' : '📬'}</div>
-            <h2 className="font-semibold text-gray-900 mb-2">
-              {mode === 'reset' ? 'E-mail enviado!' : 'Link enviado!'}
-            </h2>
-            <p className="text-sm text-gray-500">
-              {mode === 'reset'
-                ? <>Verifique sua caixa de entrada em <strong>{email}</strong> e clique no link para definir sua senha.</>
-                : <>Verifique sua caixa de entrada em <strong>{email}</strong> e clique no link para acessar.</>
-              }
-            </p>
-            <button onClick={() => { setDone(false); setMode('password') }}
-              className="mt-5 text-xs text-blue-600 hover:underline">
-              Voltar ao login
-            </button>
-          </div>
-        ) : mode === 'password' ? (
-          <form onSubmit={handlePassword}>
+        {!showPassword ? (
+          <form onSubmit={handleMagic}>
             <h2 className="font-semibold text-gray-900 mb-1">Entrar</h2>
-            <p className="text-sm text-gray-400 mb-6">E-mail e senha</p>
+            <p className="text-sm text-gray-400 mb-6">Digite seu e-mail e enviaremos um link de acesso</p>
+
+            <label className="block text-xs text-gray-500 mb-1">E-mail corporativo</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="nome@vivastays.co" required autoFocus
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400" />
+
+            {error && <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4">{error}</div>}
+
+            <button type="submit" disabled={loading}
+              className="w-full py-2.5 rounded-lg text-white text-sm font-medium transition disabled:opacity-60"
+              style={{ background: '#02275B' }}>
+              {loading ? 'Enviando...' : 'Enviar link de acesso ✉'}
+            </button>
+
+            <button type="button" onClick={() => { setShowPassword(true); setError('') }}
+              className="w-full mt-3 text-xs text-gray-400 hover:text-gray-600 text-center">
+              Entrar com senha
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handlePassword}>
+            <h2 className="font-semibold text-gray-900 mb-1">Entrar com senha</h2>
+            <p className="text-sm text-gray-400 mb-6">Para quem já configurou uma senha</p>
 
             <label className="block text-xs text-gray-500 mb-1">E-mail corporativo</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -111,61 +119,9 @@ export default function LoginPage() {
               {loading ? 'Entrando...' : 'Entrar'}
             </button>
 
-            <div className="flex justify-between mt-4">
-              <button type="button" onClick={() => { setMode('reset'); setError('') }}
-                className="text-xs text-gray-400 hover:text-gray-600">
-                Esqueci minha senha
-              </button>
-              <button type="button" onClick={() => { setMode('magic'); setError('') }}
-                className="text-xs text-gray-400 hover:text-gray-600">
-                Entrar por link
-              </button>
-            </div>
-          </form>
-        ) : mode === 'magic' ? (
-          <form onSubmit={handleMagic}>
-            <h2 className="font-semibold text-gray-900 mb-1">Entrar por link</h2>
-            <p className="text-sm text-gray-400 mb-6">Enviaremos um link de acesso para o seu e-mail</p>
-
-            <label className="block text-xs text-gray-500 mb-1">E-mail corporativo</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="nome@vivastays.co" required
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400" />
-
-            {error && <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4">{error}</div>}
-
-            <button type="submit" disabled={loading}
-              className="w-full py-2.5 rounded-lg text-white text-sm font-medium transition disabled:opacity-60"
-              style={{ background: '#02275B' }}>
-              {loading ? 'Enviando...' : 'Enviar link de acesso'}
-            </button>
-
-            <button type="button" onClick={() => { setMode('password'); setError('') }}
-              className="w-full mt-3 text-xs text-gray-400 hover:text-gray-600">
-              ← Voltar ao login com senha
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleReset}>
-            <h2 className="font-semibold text-gray-900 mb-1">Definir senha</h2>
-            <p className="text-sm text-gray-400 mb-6">Enviaremos um link para você criar ou redefinir sua senha</p>
-
-            <label className="block text-xs text-gray-500 mb-1">E-mail corporativo</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="nome@vivastays.co" required
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400" />
-
-            {error && <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4">{error}</div>}
-
-            <button type="submit" disabled={loading}
-              className="w-full py-2.5 rounded-lg text-white text-sm font-medium transition disabled:opacity-60"
-              style={{ background: '#02275B' }}>
-              {loading ? 'Enviando...' : 'Enviar link para definir senha'}
-            </button>
-
-            <button type="button" onClick={() => { setMode('password'); setError('') }}
-              className="w-full mt-3 text-xs text-gray-400 hover:text-gray-600">
-              ← Voltar ao login com senha
+            <button type="button" onClick={() => { setShowPassword(false); setError('') }}
+              className="w-full mt-3 text-xs text-gray-400 hover:text-gray-600 text-center">
+              ← Entrar por link de e-mail
             </button>
           </form>
         )}
