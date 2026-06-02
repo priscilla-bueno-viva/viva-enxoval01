@@ -122,6 +122,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* User */}
         <div className="border-t border-gray-100 px-3 py-3">
           <div className="text-xs text-gray-500 truncate mb-1">{profile?.nome || profile?.email}</div>
+          {/* DEBUG TEMPORÁRIO */}
+          <div className="text-xs text-red-500 break-all mb-1">is_gestor: {String(profile?.is_gestor ?? 'null')}</div>
           {roleLabel && (
             <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 mb-2">{roleLabel}</span>
           )}
