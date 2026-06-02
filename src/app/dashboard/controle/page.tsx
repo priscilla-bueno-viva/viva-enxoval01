@@ -1,6 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient, PECAS, PW_PREDIOS, ELIS_PREDIOS, getLavanderia } from '@/lib/supabase'
+import { isGestorProfile } from '../layout'
+
+// Pontos que cada perfil pode editar
+const DEPOSITO_PONTOS = ['A','B','C','D','L','M','N']
+const OPERACOES_PONTOS = ['E','F','G','H','I','J']
 
 const PECAS_S = ['LC','LS','Fr','TB','TR','TP']
 
@@ -166,6 +171,7 @@ export default function ControlePage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [lavanderia, setLavanderia] = useState<'PW' | 'ELIS'>('PW')
   const [predio, setPredio] = useState('')
+  const [userProfile, setUserProfile] = useState<any>(null)
 
   const [vals, setVals] = useState<Record<string, string[]>>({
     A: emptyArr(), B: emptyArr(), C: emptyArr(), D: emptyArr(),
@@ -180,6 +186,26 @@ export default function ControlePage() {
   const [jAuto, setJAuto] = useState<string[]>(emptyArr())
 
   const supabase = createClient()
+
+  // Load user profile for role-based access
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: prof } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single()
+      setUserProfile(prof)
+    }
+    loadProfile()
+  }, [])
+
+  function canEdit(ponto: string) {
+    if (!userProfile) return true // otimista enquanto carrega
+    if (isGestorProfile(userProfile)) return true
+    const mods = Array.isArray(userProfile.modulos) ? userProfile.modulos : []
+    if (mods.includes('deposito')) return DEPOSITO_PONTOS.includes(ponto)
+    if (mods.includes('operacoes')) return OPERACOES_PONTOS.includes(ponto)
+    return false
+  }
 
   // Load data when date/lavanderia/predio changes
   useEffect(() => {
@@ -372,7 +398,7 @@ export default function ControlePage() {
             values={vals[p.id]} onChange={(i: number, v: string) => setVal(p.id, i, v)}
             saved={saved[p.id]} saving={saving[p.id]}
             onSave={() => savePonto(p.id, 'deposito_limpo')}
-            accentColor="#185FA5" />
+            accentColor="#185FA5" readonly={!canEdit(p.id)} />
         ))}
       </div>
 
@@ -392,7 +418,7 @@ export default function ControlePage() {
             values={vals[p.id]} onChange={(i: number, v: string) => setVal(p.id, i, v)}
             saved={saved[p.id]} saving={saving[p.id]}
             onSave={() => savePonto(p.id, 'predio_limpo', true)}
-            accentColor="#3B6D11" />
+            accentColor="#3B6D11" readonly={!canEdit(p.id)} />
         ))}
       </div>
 
@@ -413,7 +439,7 @@ export default function ControlePage() {
               values={vals.H} onChange={(i: number, v: string) => setVal('H', i, v)}
               saved={saved.H} saving={saving.H}
               onSave={() => savePonto('H', 'predio_sujo', true)}
-              accentColor="#854F0B" />
+              accentColor="#854F0B" readonly={!canEdit('H')} />
             <TalaoBlock tipo="I" label="I — Sujo retirado dos quartos (por talão)"
               accentColor="#854F0B"
               taloes={taloes.I}
@@ -461,7 +487,7 @@ export default function ControlePage() {
             values={vals[p.id]} onChange={(i: number, v: string) => setVal(p.id, i, v)}
             saved={saved[p.id]} saving={saving[p.id]}
             onSave={() => savePonto(p.id, 'deposito_sujo')}
-            accentColor="#A32D2D" />
+            accentColor="#A32D2D" readonly={!canEdit(p.id)} />
         ))}
       </div>
 

@@ -1,15 +1,37 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient, PW_PREDIOS, ELIS_PREDIOS } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { isGestorProfile } from '../layout'
 
-const MODULOS = [
-  { id: 'deposito_limpo', label: 'Depósito Limpo (A·B·C·D)' },
-  { id: 'predio_limpo', label: 'Prédio Limpo (E·F·G)' },
-  { id: 'predio_sujo', label: 'Prédio Sujo (H·I·J)' },
-  { id: 'deposito_sujo', label: 'Depósito Sujo (L·M·N)' },
+const ROLES = [
+  {
+    id: 'gestor',
+    label: 'Gestor',
+    desc: 'Acesso total — visualiza e edita tudo',
+    color: 'bg-blue-50 text-blue-700 border-blue-200',
+  },
+  {
+    id: 'deposito',
+    label: 'Depósito',
+    desc: 'Edita pontos A·B·C·D · L·M·N + Previsão de Envio + Upload limpezas',
+    color: 'bg-orange-50 text-orange-700 border-orange-200',
+  },
+  {
+    id: 'operacoes',
+    label: 'Operações',
+    desc: 'Edita pontos E·F·G · H·I·J',
+    color: 'bg-green-50 text-green-700 border-green-200',
+  },
 ]
-const TODOS_PREDIOS = [...ELIS_PREDIOS, ...PW_PREDIOS].sort()
+
+function getRole(user: any) {
+  if (isGestorProfile(user)) return 'gestor'
+  const mods = Array.isArray(user.modulos) ? user.modulos : []
+  if (mods.includes('deposito')) return 'deposito'
+  if (mods.includes('operacoes')) return 'operacoes'
+  return 'deposito' // default
+}
 
 export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([])
@@ -25,7 +47,7 @@ export default function AdminPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/'); return }
       const { data: prof } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single()
-      if (!prof?.is_gestor) { router.push('/dashboard'); return }
+      if (!isGestorProfile(prof)) { router.push('/dashboard'); return }
       setIsGestor(true)
       const { data: allUsers } = await supabase.from('user_profiles').select('*').order('email')
       setUsers(allUsers || [])
@@ -35,31 +57,21 @@ export default function AdminPage() {
 
   function startEdit(user: any) {
     setEditing(user.id)
-    setEditData({ ...user, modulos: user.modulos || [], predios: user.predios || [] })
-  }
-
-  function toggleModulo(m: string) {
-    setEditData((prev: any) => ({
-      ...prev,
-      modulos: prev.modulos.includes(m) ? prev.modulos.filter((x: string) => x !== m) : [...prev.modulos, m]
-    }))
-  }
-
-  function togglePredio(p: string) {
-    setEditData((prev: any) => ({
-      ...prev,
-      predios: prev.predios.includes(p) ? prev.predios.filter((x: string) => x !== p) : [...prev.predios, p]
-    }))
+    setEditData({ ...user, selectedRole: getRole(user), nome: user.nome || '' })
   }
 
   async function saveUser() {
     setSaving(true)
+    const role = editData.selectedRole
+    const isGestorRole = role === 'gestor'
+    const modulos = role === 'deposito' ? ['deposito'] : role === 'operacoes' ? ['operacoes'] : []
+
     await supabase.from('user_profiles').update({
       nome: editData.nome,
-      is_gestor: editData.is_gestor,
-      modulos: editData.modulos,
-      predios: editData.predios,
+      is_gestor: isGestorRole,
+      modulos,
     }).eq('id', editing)
+
     const { data } = await supabase.from('user_profiles').select('*').order('email')
     setUsers(data || [])
     setEditing(null)
@@ -72,95 +84,80 @@ export default function AdminPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">Gestão de Usuários</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Defina módulos e prédios de acesso para cada membro do time</p>
+        <p className="text-sm text-gray-400 mt-0.5">Defina o perfil de acesso de cada membro do time</p>
+      </div>
+
+      {/* Legenda de perfis */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {ROLES.map(r => (
+          <div key={r.id} className={`rounded-xl border p-4 ${r.color}`}>
+            <div className="font-semibold text-sm mb-1">{r.label}</div>
+            <div className="text-xs opacity-80">{r.desc}</div>
+          </div>
+        ))}
       </div>
 
       <div className="space-y-3">
-        {users.map(user => (
-          <div key={user.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4">
-              <div>
-                <div className="text-sm font-medium text-gray-900">{user.nome || user.email}</div>
-                <div className="text-xs text-gray-400">{user.email}</div>
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {user.is_gestor && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">Gestor</span>
-                  )}
-                  {(user.modulos || []).map((m: string) => (
-                    <span key={m} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                      {MODULOS.find(x => x.id === m)?.label || m}
-                    </span>
-                  ))}
-                  {(user.predios || []).length > 0 && (
-                    <span className="text-xs text-gray-400">
-                      Prédios: {user.predios.join(', ')}
-                    </span>
-                  )}
+        {users.map(user => {
+          const role = getRole(user)
+          const roleInfo = ROLES.find(r => r.id === role)
+          return (
+            <div key={user.id} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{user.nome || user.email}</div>
+                  <div className="text-xs text-gray-400 mb-2">{user.email}</div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${roleInfo?.color}`}>
+                    {roleInfo?.label}
+                  </span>
                 </div>
+                <button onClick={() => startEdit(user)}
+                  className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                  Editar
+                </button>
               </div>
-              <button onClick={() => startEdit(user)}
-                className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
-                Editar
-              </button>
-            </div>
 
-            {editing === user.id && (
-              <div className="border-t border-gray-100 px-5 py-4 bg-gray-50">
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Nome</label>
-                    <input value={editData.nome || ''} onChange={e => setEditData((p: any) => ({ ...p, nome: e.target.value }))}
+              {editing === user.id && (
+                <div className="border-t border-gray-100 px-5 py-4 bg-gray-50">
+                  <div className="mb-4">
+                    <label className="text-xs text-gray-500 block mb-1">Nome (opcional)</label>
+                    <input value={editData.nome} onChange={e => setEditData((p: any) => ({ ...p, nome: e.target.value }))}
+                      placeholder="Nome do colaborador"
                       className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none bg-white" />
                   </div>
-                  <div className="flex items-center gap-2 pt-5">
-                    <input type="checkbox" id={`gestor-${user.id}`} checked={editData.is_gestor}
-                      onChange={e => setEditData((p: any) => ({ ...p, is_gestor: e.target.checked }))} />
-                    <label htmlFor={`gestor-${user.id}`} className="text-sm text-gray-700">Acesso de gestor</label>
-                  </div>
-                </div>
 
-                <div className="mb-4">
-                  <div className="text-xs text-gray-500 mb-2 font-medium">Módulos</div>
-                  <div className="flex flex-wrap gap-2">
-                    {MODULOS.map(m => (
-                      <button key={m.id} onClick={() => toggleModulo(m.id)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border transition
-                          ${editData.modulos.includes(m.id) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-200 text-gray-500 hover:bg-gray-100'}`}>
-                        {m.label}
-                      </button>
-                    ))}
+                  <div className="mb-5">
+                    <div className="text-xs text-gray-500 mb-2 font-medium">Perfil de acesso</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {ROLES.map(r => (
+                        <button key={r.id} onClick={() => setEditData((p: any) => ({ ...p, selectedRole: r.id }))}
+                          className={`text-left p-3 rounded-xl border transition ${
+                            editData.selectedRole === r.id
+                              ? r.color + ' border-2'
+                              : 'border-gray-200 bg-white hover:bg-gray-50'
+                          }`}>
+                          <div className="font-semibold text-sm mb-0.5">{r.label}</div>
+                          <div className="text-xs opacity-70">{r.desc}</div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <div className="mb-4">
-                  <div className="text-xs text-gray-500 mb-1 font-medium">
-                    Prédios específicos <span className="font-normal text-gray-400">(vazio = todos os prédios do módulo)</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {TODOS_PREDIOS.map(p => (
-                      <button key={p} onClick={() => togglePredio(p)}
-                        className={`text-xs px-2 py-1 rounded border transition
-                          ${editData.predios.includes(p) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-100 text-gray-400 hover:border-gray-300'}`}>
-                        {p}
-                      </button>
-                    ))}
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => setEditing(null)} className="text-xs px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-100">
+                      Cancelar
+                    </button>
+                    <button onClick={saveUser} disabled={saving}
+                      className="text-xs px-4 py-2 rounded-lg text-white disabled:opacity-60"
+                      style={{ background: '#02275B' }}>
+                      {saving ? 'Salvando...' : 'Salvar'}
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => setEditing(null)} className="text-xs px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-100">
-                    Cancelar
-                  </button>
-                  <button onClick={saveUser} disabled={saving}
-                    className="text-xs px-4 py-2 rounded-lg text-white disabled:opacity-60"
-                    style={{ background: '#02275B' }}>
-                    {saving ? 'Salvando...' : 'Salvar'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
