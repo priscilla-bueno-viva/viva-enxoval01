@@ -10,7 +10,7 @@ export const PECAS_LABEL = ['Lençol Casal','Lençol Solteiro','Fronha','Toalha 
 export const PECAS_SHORT = ['LC','LS','Fr','TB','TR','TP']
 
 export const ELIS_PREDIOS = ['SPZ','PQJ']
-export const PW_PREDIOS = ['AGR','CNZ','DGE','FYP','HBV','HLK','KAS','NUN','NXB','NXD','NXF','NXH','NXP','NXV','PVF','PVJ','PVN','PVP','SCN','TOF','URB','ZOM']
+export const PW_PREDIOS = ['AGR','CNZ','DGE','FYP','HBV','HEG','HLK','KAS','NUN','NXB','NXD','NXF','NXH','NXP','NXV','PVF','PVJ','PVN','PVP','SCN','TOF','URB','ZOM']
 export const TODOS_PREDIOS = [...ELIS_PREDIOS, ...PW_PREDIOS]
 
 export function getLavanderia(predio: string) {
@@ -40,6 +40,7 @@ export const PADRAO: Record<string, Record<string, number[]>> = {
   DGE: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], 'Studio | Q1:Casal + Sofá Cama | 1 banh': [3,0,4,2,1,1], '1BDR | Q1:Casal + Sofá Cama | 1 banh': [3,0,4,2,1,1] },
   FYP: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], 'Studio | Q1:Queen | 1 banh': [3,0,4,2,1,1], '1BDR | 2 banh': [3,0,4,2,2,1], '1BDR | Q1:Queen | 1 banh': [3,0,4,2,1,1], '2BDR | Q1:Queen + Q2:Solteiro | 2 banh': [6,0,6,3,2,2] },
   HBV: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1] },
+  HEG: { '1BDR | Q1:Casal | 1 banh': [3,0,4,2,1,1], '3BDR | Q1:Queen + Q2:Casal + Q3:Solteiro | 3 banh': [6,3,8,4,3,2] },
   HLK: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], '1BDR | Q1:Casal | 1 banh': [3,0,4,2,1,1] },
   KAS: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], 'Studio | Q1:Solteiro | 1 banh': [0,3,2,1,1,1] },
   NUN: { 'Studio | Q1:Queen | 1 banh': [3,0,4,2,1,1], '1BDR | Q1:Queen | 1 banh': [3,0,4,2,1,1], '2BDR | Q1:Queen + Q2:Queen | 2 banh': [6,0,8,4,2,2] },
