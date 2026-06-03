@@ -36,7 +36,7 @@ export const PADRAO: Record<string, Record<string, number[]>> = {
     '4BDR | Q1:Solteiro + Q2:Solteiro + Q3:Solteiro | 2 banh': [0,12,8,4,2,2],
   },
   AGR: { '1BDR | Q1:Casal | 1 banh': [3,0,4,2,1,1], '2BDR | Q1:Casal + Q2:Solteiro | 1 banh': [6,0,6,3,1,1] },
-  CNZ: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], 'Studio | Q1:Solteiro | 1 banh': [0,6,4,2,1,1] },
+  CNZ: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], 'Studio | Q1:Solteiro | 1 banh': [6,0,4,2,1,1] },
   DGE: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], 'Studio | Q1:Casal + Sofá Cama | 1 banh': [3,0,4,2,1,1], '1BDR | Q1:Casal + Sofá Cama | 1 banh': [3,0,4,2,1,1] },
   FYP: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1], 'Studio | Q1:Queen | 1 banh': [3,0,4,2,1,1], '1BDR | 2 banh': [3,0,4,2,2,1], '1BDR | Q1:Queen | 1 banh': [3,0,4,2,1,1], '2BDR | Q1:Queen + Q2:Solteiro | 2 banh': [6,0,6,3,2,2] },
   HBV: { 'Studio | Q1:Casal | 1 banh': [3,0,4,2,1,1] },
