@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient, PADRAO, getLavanderia, PECAS } from '@/lib/supabase'
 import { UNIT_COMBO } from '@/lib/unitMap'
 import * as XLSX from 'xlsx'
+import { getUnidade, getStatus, usaEnxoval, filtrarPorData } from '@/lib/limpezaImport'
 
 const PECAS_SHORT = ['LC', 'LS', 'Fr', 'TB', 'TR', 'TP']
 const PECAS_LABEL = ['Lençol Casal', 'Lençol Solteiro', 'Fronha', 'Toalha Banho', 'Toalha Rosto', 'Toalha Piso']
@@ -51,11 +52,9 @@ export default function PrevisaoPage() {
       const byPredio: Record<string, { lav: string; limpezas: number; necessario: number[] }> = {}
       const unmapped: string[] = []
 
-      for (const r of data) {
-        const unidade = (r['Unidade'] || r['unidade'] || '').trim()
-        const status = (r['Status'] || r['status'] || '').toLowerCase()
-        // Aceita scheduled, pending, confirmed ou sem status (previsão)
-        if (status === 'completed') continue
+      for (const r of filtrarPorData(data, dataPrev)) {
+        const unidade = getUnidade(r)
+        if (getStatus(r) === 'completed' || !usaEnxoval(r)) continue
         const predio = unidade.split(' ')[0]
         if (!predio || !PADRAO[predio]) continue
 

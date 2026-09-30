@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createClient, PADRAO, getLavanderia } from '@/lib/supabase'
 import { UNIT_COMBO } from '@/lib/unitMap'
 import * as XLSX from 'xlsx'
+import { getUnidade, getStatus, usaEnxoval, filtrarPorData } from '@/lib/limpezaImport'
 
 const PECAS_SHORT = ['LC', 'LS', 'Fr', 'TB', 'TR', 'TP']
 const CAMPOS_ESP = ['lenco_casal_esperado','lenco_solteiro_esperado','fronha_esperada','toalha_banho_esperada','toalha_rosto_esperada','toalha_piso_esperada']
@@ -21,9 +22,13 @@ export default function LimpezasPage() {
       const wb = XLSX.read(new Uint8Array(e.target!.result as ArrayBuffer), { type: 'array' })
       const ws = wb.Sheets[wb.SheetNames[0]]
       const data = XLSX.utils.sheet_to_json(ws, { defval: '' }) as any[]
-      const completed = data.filter(r => (r['Status'] || '').toLowerCase() === 'completed')
+      const doMetabase = data.some(r => r["Listing"] !== undefined)
+      // Metabase: todas as tarefas válidas da data; export antigo: só concluídas
+      const completed = doMetabase
+        ? filtrarPorData(data, date).filter(usaEnxoval)
+        : data.filter(r => getStatus(r) === "completed")
       const processed = completed.map(r => {
-        const unidade = (r['Unidade'] || '').trim()
+        const unidade = getUnidade(r)
         const predio = unidade.split(' ')[0]
         const lav = getLavanderia(predio)
         const combos = PADRAO[predio] || {}
