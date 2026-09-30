@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { createClient, PADRAO, getLavanderia } from '@/lib/supabase'
 import { UNIT_COMBO } from '@/lib/unitMap'
 import * as XLSX from 'xlsx'
-import { getUnidade, getStatus, usaEnxoval, filtrarPorData } from '@/lib/limpezaImport'
+import { getUnidade, getStatus, usaEnxoval, filtrarPorData, avisoSemData } from '@/lib/limpezaImport'
 
 const PECAS_SHORT = ['LC', 'LS', 'Fr', 'TB', 'TR', 'TP']
 const CAMPOS_ESP = ['lenco_casal_esperado','lenco_solteiro_esperado','fronha_esperada','toalha_banho_esperada','toalha_rosto_esperada','toalha_piso_esperada']
@@ -22,6 +22,7 @@ export default function LimpezasPage() {
       const wb = XLSX.read(new Uint8Array(e.target!.result as ArrayBuffer), { type: 'array' })
       const ws = wb.Sheets[wb.SheetNames[0]]
       const data = XLSX.utils.sheet_to_json(ws, { defval: '' }) as any[]
+      setError(avisoSemData(data, date))
       const doMetabase = data.some(r => r["Listing"] !== undefined)
       // Metabase: todas as tarefas válidas da data; export antigo: só concluídas
       const completed = doMetabase
@@ -114,8 +115,10 @@ export default function LimpezasPage() {
         <span className="text-3xl mb-2">📂</span>
         <span className="text-sm font-medium text-gray-700">Clique para carregar arquivo de limpezas</span>
         <span className="text-xs text-gray-400 mt-1">.xlsx ou .xls — exportado do sistema de limpezas</span>
-        <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} />
+        <input type="file" accept=".xlsx,.xls" className="hidden" onChange={e => { if (e.target.files?.[0]) processFile(e.target.files[0]); e.target.value = '' }} />
       </label>
+
+      {error && rows.length === 0 && <div className="text-xs text-red-600 bg-red-50 rounded-lg px-4 py-2 mb-4">{error}</div>}
 
       {rows.length > 0 && (
         <>

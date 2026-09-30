@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient, PADRAO, getLavanderia, PECAS } from '@/lib/supabase'
 import { UNIT_COMBO } from '@/lib/unitMap'
 import * as XLSX from 'xlsx'
-import { getUnidade, getStatus, usaEnxoval, filtrarPorData } from '@/lib/limpezaImport'
+import { getUnidade, getStatus, usaEnxoval, filtrarPorData, avisoSemData } from '@/lib/limpezaImport'
 
 const PECAS_SHORT = ['LC', 'LS', 'Fr', 'TB', 'TR', 'TP']
 const PECAS_LABEL = ['Lençol Casal', 'Lençol Solteiro', 'Fronha', 'Toalha Banho', 'Toalha Rosto', 'Toalha Piso']
@@ -37,6 +37,7 @@ export default function PrevisaoPage() {
   const [salvando, setSalvando] = useState(false)
   const [savedMsg, setSavedMsg] = useState('')
   const [debugUnits, setDebugUnits] = useState<string[]>([])
+  const [avisoData, setAvisoData] = useState('')
   const [arquivoCarregado, setArquivoCarregado] = useState('')
   const supabase = createClient()
 
@@ -52,6 +53,7 @@ export default function PrevisaoPage() {
       const byPredio: Record<string, { lav: string; limpezas: number; necessario: number[] }> = {}
       const unmapped: string[] = []
 
+      setAvisoData(avisoSemData(data, dataPrev))
       for (const r of filtrarPorData(data, dataPrev)) {
         const unidade = getUnidade(r)
         if (getStatus(r) === 'completed' || !usaEnxoval(r)) continue
@@ -301,8 +303,12 @@ export default function PrevisaoPage() {
         </span>
         <span className="text-xs text-gray-400 mt-1">.xlsx ou .xls — limpezas agendadas para {dataPrev}</span>
         <input type="file" accept=".xlsx,.xls" className="hidden"
-          onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} />
+          onChange={e => { if (e.target.files?.[0]) processFile(e.target.files[0]); e.target.value = '' }} />
       </label>
+
+      {avisoData && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{avisoData}</div>
+      )}
 
       {debugUnits.length > 0 && (
         <div className="mb-4 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">

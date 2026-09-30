@@ -35,3 +35,10 @@ export function filtrarPorData(data: any[], date: string): any[] {
   if (!data.some(r => getDataLimpeza(r))) return data
   return data.filter(r => getDataLimpeza(r) === date)
 }
+
+export function avisoSemData(data: any[], date: string): string {
+  const datas = Array.from(new Set(data.map(getDataLimpeza).filter(Boolean))) as string[]
+  if (!datas.length || datas.includes(date)) return ''
+  const fmt = (d: string) => d.split('-').reverse().join('/')
+  return `O arquivo não tem limpezas em ${fmt(date)}. Datas no arquivo: ${datas.sort().map(fmt).join(', ')}. Troque a data no topo e carregue de novo.`
+}
